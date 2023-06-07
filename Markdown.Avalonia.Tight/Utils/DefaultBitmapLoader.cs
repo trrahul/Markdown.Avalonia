@@ -10,6 +10,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Markdown.Avalonia.Utils
@@ -22,6 +23,9 @@ namespace Markdown.Avalonia.Utils
         private string[] AssetAssemblyNames { get; }
 
         private ConcurrentDictionary<Uri, WeakReference<Bitmap>> Cache;
+
+        private static readonly Regex Base64UriRegex = new Regex(@"^data:image\/\w{3,4};base64,[aA-zZ0-9=+/]+$");
+        private static readonly Regex Base64Regex = new Regex(@"(?<=^data:image\/\w{3,4};base64,)[aA-zZ0-9=+/]+$");
 
         public DefaultBitmapLoader()
         {
@@ -59,6 +63,10 @@ namespace Markdown.Avalonia.Utils
         {
             Bitmap? imgSource = null;
 
+            if (Base64UriRegex.IsMatch(urlTxt))
+            {
+                imgSource = ConvertBase64Image(urlTxt);
+            }
             // check network
             if (Uri.TryCreate(urlTxt, UriKind.Absolute, out var url))
             {
@@ -96,6 +104,20 @@ namespace Markdown.Avalonia.Utils
             }
 
             return imgSource;
+        }
+
+        private Bitmap? ConvertBase64Image(string base64String)
+        {
+            var actualBase64String = Base64Regex.Match(base64String).Value;
+            if (!string.IsNullOrEmpty(actualBase64String))
+            {
+                var bytes = Convert.FromBase64String(actualBase64String);
+                using var ms = new MemoryStream(bytes);
+                var bitmap = new Bitmap(ms);
+                return bitmap;
+            }
+
+            return null;
         }
 
         public Bitmap? Get(Uri url)
