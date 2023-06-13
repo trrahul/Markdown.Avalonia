@@ -100,7 +100,6 @@
     <Style.Setters>
       <Setter Property="BorderBrush"     Value="{mde:Alpha ThemeForegroundColor, 0.13}"/>
       <Setter Property="BorderThickness" Value="0,5,0,5"/>
-      <Setter Property="Margin"          Value="5,0,5,0"/>
       <Setter Property="Background"      Value="{mde:Alpha ThemeForegroundColor, 0.06}"/>
     </Style.Setters>
   </Style>

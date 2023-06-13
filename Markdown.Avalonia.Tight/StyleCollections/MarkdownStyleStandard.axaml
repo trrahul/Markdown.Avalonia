@@ -56,7 +56,6 @@
     <Style.Setters>
       <Setter Property="BorderBrush"     Value="#DEDEDE"/>
       <Setter Property="BorderThickness" Value="0,5,0,5"/>
-      <Setter Property="Margin"          Value="5,0,5,0"/>
       <Setter Property="Background"      Value="#EEEEEE"/>
     </Style.Setters>
   </Style>
