@@ -33,10 +33,12 @@ namespace Markdown.Avalonia
     public class Markdown : AvaloniaObject, IMarkdownEngine
     {
         private static readonly Dictionary<string, Func<Match, Control>> s_converterMap;
+        private static readonly Dictionary<string, Func<Match,ICodeLanguageDetector, Control>> sl_converterMap;
 
         static Markdown()
         {
             s_converterMap = new Dictionary<string, Func<Match, Control>>();
+            sl_converterMap= new Dictionary<string, Func<Match,ICodeLanguageDetector,Control>>();
 
             try
             {
@@ -53,6 +55,8 @@ namespace Markdown.Avalonia
                 {
                     if (kvpObj is KeyValuePair<string, Func<Match, Control>> kvp)
                         s_converterMap[kvp.Key] = kvp.Value;
+                    else if (kvpObj is KeyValuePair<string, Func<Match,ICodeLanguageDetector, Control>> kvp2)
+                        sl_converterMap[kvp2.Key] = kvp2.Value;
                 }
             }
             catch (Exception e)
@@ -63,6 +67,8 @@ namespace Markdown.Avalonia
 
         private static Func<Match, Control>? GetConverterOrNull(string processName)
             => s_converterMap.TryGetValue(processName, out var getval) ? getval : null;
+        private static Func<Match,ICodeLanguageDetector, Control>? GetConverterOrNull2(string processName)
+            => sl_converterMap.TryGetValue(processName, out var getval) ? getval : null;
 
         #region const
         /// <summary>
@@ -145,6 +151,7 @@ namespace Markdown.Avalonia
         private Lazy<Bitmap> ImageNotFound { get; }
 
         public CascadeDictionary CascadeResources { get; } = new CascadeDictionary();
+        public ICodeLanguageDetector? CodeLanguageDetector { get; set; }
 
         public IResourceDictionary Resources
         {
@@ -175,8 +182,9 @@ namespace Markdown.Avalonia
 
         #endregion
 
-        public Markdown()
+        public Markdown(ICodeLanguageDetector codeLanguageDetector)
         {
+            CodeLanguageDetector = codeLanguageDetector;
             _assetPathRoot = Environment.CurrentDirectory;
 
             HyperlinkCommand = new DefaultHyperlinkCommand();
@@ -192,7 +200,7 @@ namespace Markdown.Avalonia
 
 
             TopLevelBlockParsers = new[]{
-                Parser.Create<Control>(_codeBlockFirst     , GetConverterOrNull(nameof(CodeBlocksWithLangEvaluator   )), CodeBlocksWithLangEvaluator   ),
+                Parser.Create<Control>(_codeBlockFirst     ,CodeLanguageDetector, GetConverterOrNull2(nameof(CodeBlocksWithLangEvaluator   )), CodeBlocksWithLangEvaluator  ),
                 Parser.Create<Control>(_containerBlockFirst, GetConverterOrNull(nameof(ContainerBlockEvaluator       )), ContainerBlockEvaluator       ),
                 Parser.Create<Control>(_listNested         , GetConverterOrNull(nameof(ListEvaluator                 )), ListEvaluator                 ),
             };
@@ -1739,12 +1747,10 @@ namespace Markdown.Avalonia
             for (; parserStart < parsers.Length; ++parserStart)
             {
                 var parser = parsers[parserStart];
-
                 for (; ; )
                 {
                     var match = parser.Match(text, index, length, status);
                     if (!match.Success) break;
-
                     if (match.Index > index)
                     {
                         EvaluateRest(resultIn, text, index, match.Index - index, status, parsers, parserStart + 1, rest);

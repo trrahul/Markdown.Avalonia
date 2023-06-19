@@ -11,65 +11,63 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
+using Avalonia.Styling;
+using Avalonia.Threading;
+using AvaloniaEdit.TextMate;
+using Markdown.Avalonia.Utils;
+using Markdown.Avalonia.Controls;
+using TextMateSharp.Grammars;
 
 namespace Markdown.Avalonia.SyntaxHigh
 {
     public class SyntaxSetup
     {
-        public IEnumerable<KeyValuePair<string, Func<Match, Control>>> GetOverrideConverters()
+        public IEnumerable<KeyValuePair<string, Func<Match,ICodeLanguageDetector, Control>>> GetOverrideConverters()
         {
-            yield return new KeyValuePair<string, Func<Match, Control>>(
+            yield return new KeyValuePair<string, Func<Match,ICodeLanguageDetector, Control>>(
                 "CodeBlocksWithLangEvaluator",
                 CodeBlocksEvaluator);
         }
 
-        private Border CodeBlocksEvaluator(Match match)
+        private CodeBlockBorder CodeBlocksEvaluator(Match match,ICodeLanguageDetector? detector)
         {
             var lang = match.Groups[2].Value;
             var code = match.Groups[3].Value;
-
-            if (String.IsNullOrEmpty(lang))
+            // check wheither style is set
+            if (!ThemeDetector.IsAvalonEditSetup)
             {
-                var ctxt = new TextBlock()
-                {
-                    Text = code,
-                    TextWrapping = TextWrapping.NoWrap
-                };
-                ctxt.Classes.Add(Markdown.CodeBlockClass);
+                SetupStyle();
 
-                var scrl = new ScrollViewer();
-                scrl.Classes.Add(Markdown.CodeBlockClass);
-                scrl.Content = ctxt;
-                scrl.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
-
-                var result = new Border();
-                result.Classes.Add(Markdown.CodeBlockClass);
-                result.Child = scrl;
-
-                return result;
             }
-            else
+
+            var txtEdit = new TextEditor();
+            txtEdit.Text = code;
+            txtEdit.HorizontalAlignment = HorizontalAlignment.Stretch;
+            txtEdit.IsReadOnly = true;
+            var result = new CodeBlockBorder();
+            result.Classes.Add(Markdown.CodeBlockClass);
+            result.Child = txtEdit;
+            result.Loaded += (sender, args) =>
             {
-                // check wheither style is set
-                if (!ThemeDetector.IsAvalonEditSetup)
+                Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    SetupStyle();
+                    var currentTheme = Application.Current.ActualThemeVariant == ThemeVariant.Dark
+                        ? ThemeName.DarkPlus
+                        : ThemeName.LightPlus;
+                    var registryOptions = new RegistryOptions(currentTheme);
+                    lang = string.IsNullOrWhiteSpace(lang) ? detector?.DetectLanguage(code) : lang;
+                    var language = registryOptions.GetAvailableLanguages().Find(l => l.Aliases.Contains(lang));
+                    if (language != null)
+                    {
+                        var textMateInstallation = txtEdit.InstallTextMate(registryOptions);
+                        textMateInstallation.SetGrammar(registryOptions.GetScopeByLanguageId(language.Id));
+                    }
+                    result.Language = lang;
+                    txtEdit.Tag = lang;
+                });
 
-                }
-
-                var txtEdit = new TextEditor();
-                txtEdit.Tag = lang;
-
-                txtEdit.Text = code;
-                txtEdit.HorizontalAlignment = HorizontalAlignment.Stretch;
-                txtEdit.IsReadOnly = true;
-
-                var result = new Border();
-                result.Classes.Add(Markdown.CodeBlockClass);
-                result.Child = txtEdit;
-
-                return result;
-            }
+            };
+            return result;
         }
 
         private static void SetupStyle()

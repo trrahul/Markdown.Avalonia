@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using Markdown.Avalonia.Utils;
 
 namespace Markdown.Avalonia.Parsers
 {
@@ -11,6 +12,8 @@ namespace Markdown.Avalonia.Parsers
 
         public static Parser<T> Create<T>(Regex pattern, Func<Match, T>? v1, Func<Match, ParseStatus, T> v2)
             => v1 is null ? (Parser<T>)new Single2<T>(pattern, v2) : new Single<T>(pattern, v1);
+        public static Parser<T> Create<T>(Regex pattern,ICodeLanguageDetector detector, Func<Match,ICodeLanguageDetector, T>? v1, Func<Match, T> v2)
+            => v1 is null ? (Parser<T>)new Single<T>(pattern, v2) : new Single3<T>(pattern,detector,v1);
 
         public static Parser<T> Create<T>(Regex pattern, Func<Match, T>? v1, Func<Match, IEnumerable<T>> v2)
             => v1 is null ? (Parser<T>)new Multi<T>(pattern, v2) : new Single<T>(pattern, v1);
@@ -45,6 +48,23 @@ namespace Markdown.Avalonia.Parsers
             public override IEnumerable<T> Convert(Match match, ParseStatus status)
             {
                 yield return converter(match, status);
+            }
+        }
+        sealed class Single3<T> : Parser<T>
+        {
+            private readonly Func<Match, ICodeLanguageDetector, T> converter;
+            private readonly ICodeLanguageDetector codeLanguageDetector;
+
+            public Single3(Regex pattern, ICodeLanguageDetector codeLanguageDetector,
+                Func<Match, ICodeLanguageDetector, T> converter) : base(pattern)
+            {
+                this.codeLanguageDetector = codeLanguageDetector;
+                this.converter = converter;
+            }
+
+            public override IEnumerable<T> Convert(Match match, ParseStatus status)
+            {
+                yield return converter(match, codeLanguageDetector);
             }
         }
 

@@ -52,11 +52,24 @@
     </Style.Setters>
   </Style>
 
-  <Style Selector="Border.CodeBlock">
+  <Style Selector="mdc|CodeBlockBorder.CodeBlock">
     <Style.Setters>
       <Setter Property="BorderBrush"     Value="#DEDEDE"/>
       <Setter Property="BorderThickness" Value="0,5,0,5"/>
       <Setter Property="Background"      Value="#EEEEEE"/>
+      <Setter Property="Template">
+          <ControlTemplate TargetType="mdc:CodeBlockBorder">
+              <Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}">
+                  <Grid RowDefinitions="Auto,*">
+                      <Grid Background="{TemplateBinding BorderBrush}">
+                          <TextBlock Text="{TemplateBinding Language}" HorizontalAlignment="Left"/>
+                          <Button x:Name="PART_ClickButton" Content="Copy" HorizontalAlignment="Right"/>
+                      </Grid>
+                      <ContentPresenter Content="{TemplateBinding Child}" Grid.Row="1" />
+                  </Grid>
+              </Border>
+          </ControlTemplate>
+      </Setter>
     </Style.Setters>
   </Style>
   <Style Selector="TextBlock.CodeBlock">

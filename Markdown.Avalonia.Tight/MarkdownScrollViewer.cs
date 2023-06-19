@@ -63,6 +63,10 @@ namespace Markdown.Avalonia
                 owner => owner.ScrollValue,
                 (owner, v) => owner.ScrollValue = v);
 
+        public static readonly DirectProperty<MarkdownScrollViewer,ICodeLanguageDetector?> CodeLanguageDetectorProperty =
+            AvaloniaProperty.RegisterDirect<MarkdownScrollViewer, ICodeLanguageDetector?>(nameof(CodeLanguageDetector),
+                v => v.CodeLanguageDetector, (v, d) => v.CodeLanguageDetector = d);
+
 
         private static readonly HttpClient _httpclient = new();
 
@@ -70,7 +74,7 @@ namespace Markdown.Avalonia
 
         public MarkdownScrollViewer()
         {
-            var md = new Markdown();
+            var md = new Markdown(default);
             md.CascadeResources.SetParent(this);
 
             _engine = md;
@@ -164,6 +168,18 @@ namespace Markdown.Avalonia
         {
             set { _viewer.Offset = value; }
             get { return _viewer.Offset; }
+        }
+
+        public ICodeLanguageDetector CodeLanguageDetector
+        {
+            get => _codeLanguageDetector;
+            set
+            {
+                if (this.SetAndRaise(CodeLanguageDetectorProperty, ref _codeLanguageDetector, value))
+                {
+                    Engine = new Markdown(CodeLanguageDetector);
+                }
+            }
         }
 
         [Content]
@@ -349,6 +365,8 @@ namespace Markdown.Avalonia
         }
 
         private bool _useResource;
+        private ICodeLanguageDetector _codeLanguageDetector;
+
         public bool UseResource
         {
             get => _useResource;
